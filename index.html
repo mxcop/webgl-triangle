@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Draw a triangle</title>
+
+    <style>
+        html, body {
+            background-color: #141414;
+            padding: 0;
+            margin: 0;
+        }
+
+        #ctx {
+            width: 100%;
+            height: auto;
+            max-width: 1920px;
+            max-height: 1080px;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 16px;
+        }
+    </style>
+</head>
+<body onload="init()">
+    <canvas id="ctx" width="1920" height="1080"></canvas>
+</body>
+
+<!-- Vertex and Fragment shaders -->
+<script id="shader_vert" type="x-shader/x-vertex">
+    attribute vec4 a_pos;
+    void main() {
+        gl_Position = a_pos;
+    }
+</script>
+<script id="shader_frag" type="x-shader/x-fragment">
+    void main() {
+        gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    }
+</script>
+
+<!-- WebGL initialization -->
+<script>
+    function init() {
+        /* Get HTML canvas element */
+        const ctx = document.getElementById("ctx");
+
+        /* Obtain the WebGL context */
+        const gl = ctx.getContext("webgl");
+        if (!gl) {
+            console.error("failed to obtain WebGL context.");
+            return;
+        }
+
+        /* Fetch the shader code, compile, and link it */
+        const vs = document.getElementById('shader_vert').innerText;
+        const fs = document.getElementById('shader_frag').innerText;
+        if (initShaders(gl, vs, fs) == false) {
+            console.error("failed to compile and link shaders.");
+            return;
+        }
+
+        /* Initialize vertex buffers for triangle */
+        const n = initVertexBuffers(gl);
+        if (n < 0) {
+            console.error("failed to initialize vertex buffers.");
+            return;
+        }
+
+        /* Clear and draw */
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.TRIANGLES, 0, n);
+    }
+
+    function initVertexBuffers(gl) {
+        /* Hardcoded vertices for a triangle */
+        const elements = 3; /* 3 numbers per vertex */
+        const vertices = new Float32Array([
+             0,    0.5, 0,  /* Vertex 1 */
+            -0.5, -0.5, 0,  /* Vertex 2 */
+             0.5, -0.5, 0   /* Vertex 3 */
+        ]);
+
+        /* Create the buffer object */
+        const vertexBuffer = gl.createBuffer();
+        if (!vertexBuffer) {
+            console.error("failed to create buffer object.");
+            return -1;
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+        /* Assign the buffer object to the "a_pos" vertex attribute */
+        const a_pos = gl.getAttribLocation(gl.program, "a_pos");
+        if (a_pos < 0) {
+            console.error("failed to get the storage location of 'a_pos'.");
+            return -1;
+        }
+        gl.vertexAttribPointer(a_pos, elements, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(a_pos);
+
+        /* Return the number of vertices in the buffer */
+        return vertices.length / elements;
+    }
+
+    function initShaders(gl, vs_source, fs_source) {
+        /* Compile the shader source */
+        const vert_sh = compileShader(gl, vs_source, gl.VERTEX_SHADER);
+        const frag_sh = compileShader(gl, fs_source, gl.FRAGMENT_SHADER);
+
+        /* Create a shader program */
+        const program = gl.createProgram();
+
+        /* Attach the compiled shaders to the program */
+        gl.attachShader(program, vert_sh);
+        gl.attachShader(program, frag_sh);
+
+        /* Finally link the program, use, and save it */
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error("failed to link the shader program.");
+            return false;
+        }
+        gl.useProgram(program);
+        gl.program = program;
+
+        return true;
+    }
+
+    function compileShader(gl, src, type) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, src);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            console.error("failed to compile shader: " + gl.getShaderInfoLog(shader));
+            return;
+        }
+        return shader;
+    }
+</script>
+
+</html>
